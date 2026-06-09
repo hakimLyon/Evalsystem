@@ -151,15 +151,22 @@ def eval_form(request, role):
     if role in ('tutor', 'invited') and not is_authenticated(request, role):
         return redirect('eval_password', role=role)
 
-    # Check if this browser already submitted for this role
+    # Check if this browser already submitted under ANY role
     session_key = f'submitted_{role}'
-    if request.session.get(session_key):
-        submitted_name = request.session.get(f'submitted_{role}_name', '')
+    submitted_any_role = None
+    for r in ('student', 'tutor', 'invited'):
+        if request.session.get(f'submitted_{r}'):
+            submitted_any_role = r
+            break
+    if submitted_any_role:
+        submitted_name = request.session.get(f'submitted_{submitted_any_role}_name', '')
+        submitted_label = {'student': 'Student', 'tutor': 'Tutor', 'invited': 'Invited Evaluator'}[submitted_any_role]
         return render(request, 'evaluations/eval_form.html', {
             'role': role,
             'role_label': {'student': 'Student', 'tutor': 'Tutor', 'invited': 'Invited Evaluator'}[role],
             'already_submitted': True,
             'submitted_name': submitted_name,
+            'submitted_role_label': submitted_label,
         })
 
     groups = Group.objects.prefetch_related('presenters').all()
@@ -170,13 +177,14 @@ def eval_form(request, role):
             messages.error(request, "Please enter your name.")
             return redirect('eval_form', role=role)
 
-        # DB-level check: if this name already submitted scores, block
-        existing_evaluator = Evaluator.objects.filter(
-            name__iexact=evaluator_name, evaluator_type=role
-        ).first()
-        if existing_evaluator and existing_evaluator.scores.exists():
-            request.session[session_key] = True
-            request.session[f'submitted_{role}_name'] = evaluator_name
+        # DB-level check: if this name already submitted scores under ANY role, block
+        existing_evaluators = Evaluator.objects.filter(
+            name__iexact=evaluator_name, scores__isnull=False
+        ).distinct()
+        if existing_evaluators.exists():
+            ev = existing_evaluators.first()
+            request.session[f'submitted_{ev.evaluator_type}'] = True
+            request.session[f'submitted_{ev.evaluator_type}_name'] = evaluator_name
             messages.warning(request, f"An evaluation was already submitted under the name '{evaluator_name}'. Each person can only submit once.")
             return redirect('eval_form', role=role)
 
