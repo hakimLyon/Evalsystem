@@ -214,13 +214,23 @@ def eval_form(request, role):
         if saved or skipped:
             request.session[session_key] = True
             request.session[f'submitted_{role}_name'] = evaluator_name
+
+        result_messages = []
         if saved:
-            messages.success(request, f"{saved} score(s) saved. Thank you, {evaluator_name}!")
+            result_messages.append(f"{saved} score(s) saved. Thank you, {evaluator_name}!")
         if skipped:
-            messages.warning(request, f"{skipped} group(s) already scored by you -- skipped.")
+            result_messages.append(f"{skipped} group(s) already scored by you -- skipped.")
         if errors:
-            messages.error(request, "Issues: " + "; ".join(errors))
-        return redirect('eval_form', role=role)
+            result_messages.append("Issues: " + "; ".join(errors))
+
+        return render(request, 'evaluations/eval_form.html', {
+            'role': role,
+            'role_label': {'student': 'Student', 'tutor': 'Tutor', 'invited': 'Invited Evaluator'}[role],
+            'just_submitted': True,
+            'result_messages': result_messages,
+            'submitted_name': evaluator_name,
+            'had_errors': bool(errors and not saved),
+        })
 
     return render(request, 'evaluations/eval_form.html', {
         'groups': groups, 'role': role,
