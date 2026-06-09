@@ -151,6 +151,17 @@ def eval_form(request, role):
     if role in ('tutor', 'invited') and not is_authenticated(request, role):
         return redirect('eval_password', role=role)
 
+    # Check if this browser already submitted for this role
+    session_key = f'submitted_{role}'
+    if request.session.get(session_key):
+        submitted_name = request.session.get(f'submitted_{role}_name', '')
+        return render(request, 'evaluations/eval_form.html', {
+            'role': role,
+            'role_label': {'student': 'Student', 'tutor': 'Tutor', 'invited': 'Invited Evaluator'}[role],
+            'already_submitted': True,
+            'submitted_name': submitted_name,
+        })
+
     groups = Group.objects.prefetch_related('presenters').all()
 
     if request.method == 'POST':
@@ -192,6 +203,9 @@ def eval_form(request, role):
 
         if saved:
             messages.success(request, f"{saved} score(s) saved. Thank you, {evaluator_name}!")
+            # Mark session as submitted
+            request.session[session_key] = True
+            request.session[f'submitted_{role}_name'] = evaluator_name
         if skipped:
             messages.warning(request, f"{skipped} group(s) already scored by you -- skipped.")
         if errors:
