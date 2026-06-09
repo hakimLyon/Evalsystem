@@ -191,9 +191,9 @@ def eval_form(request, role):
                 errors.append(f"{group.name}: {e}")
 
         if saved:
-            messages.success(request, f"✅ {saved} score(s) saved. Thank you, {evaluator_name}!")
+            messages.success(request, f"{saved} score(s) saved. Thank you, {evaluator_name}!")
         if skipped:
-            messages.warning(request, f"⚠️ {skipped} group(s) already scored by you — skipped.")
+            messages.warning(request, f"{skipped} group(s) already scored by you -- skipped.")
         if errors:
             messages.error(request, "Issues: " + "; ".join(errors))
         return redirect('eval_form', role=role)
