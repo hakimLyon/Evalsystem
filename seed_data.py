@@ -2,7 +2,11 @@ import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'evaluation_system.settings')
 django.setup()
 
+from django.contrib.auth.models import User
 from evaluations.models import Group, WeightConfig
+
+if not User.objects.filter(is_superuser=True).exists():
+    User.objects.create_superuser('admin', 'admin@evalsystem.local', 'admin2024')
 
 if not WeightConfig.objects.exists():
     WeightConfig.objects.create(
