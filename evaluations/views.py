@@ -21,13 +21,13 @@ def is_authenticated(request, role):
     return request.session.get(SESSION_KEYS.get(role)) is True
 
 def parse_score(raw):
-    """Accept 2,5 or 2.5 → float, clamp 0-4, round to nearest 0.5."""
+    """Accept 2,5 or 2.5 → float, clamp 0-4, round to 1 decimal."""
     if raw is None or str(raw).strip() == '':
         return None
     try:
         v = float(str(raw).replace(',', '.'))
         v = max(0.0, min(4.0, v))
-        return round(round(v * 2) / 2, 1)  # round to nearest 0.5
+        return round(v, 1)
     except (ValueError, TypeError):
         return None
 
@@ -188,32 +188,46 @@ def eval_form(request, role):
             messages.warning(request, f"An evaluation was already submitted under the name '{evaluator_name}'. Each person can only submit once.")
             return redirect('eval_form', role=role)
 
+        # Pre-validate: ALL groups must have scores before saving anything
+        parsed_scores = {}
+        missing_groups = []
+        for group in groups:
+            prefix = f"group_{group.pk}_"
+            content = parse_score(request.POST.get(prefix + 'content'))
+            pres    = parse_score(request.POST.get(prefix + 'presentation_skills'))
+            time_m  = parse_score(request.POST.get(prefix + 'time_management'))
+            lang    = parse_score(request.POST.get(prefix + 'language'))
+            qa      = parse_score(request.POST.get(prefix + 'questions_answers', ''))
+
+            if any(v is None for v in [content, pres, time_m, lang]):
+                missing_groups.append(group.name)
+            else:
+                parsed_scores[group.pk] = {
+                    'content': content, 'presentation_skills': pres,
+                    'time_management': time_m, 'language': lang,
+                    'questions_answers': qa,
+                }
+
+        if missing_groups:
+            messages.error(request, f"All groups must be scored. Missing scores for: {', '.join(missing_groups)}")
+            return render(request, 'evaluations/eval_form.html', {
+                'groups': groups, 'role': role,
+                'role_label': {'student': 'Student', 'tutor': 'Tutor', 'invited': 'Invited Evaluator'}[role],
+                'config': config,
+                'criteria': CRITERIA,
+            })
+
         evaluator, _ = Evaluator.objects.get_or_create(name=evaluator_name, evaluator_type=role)
         saved, skipped, errors = 0, 0, []
 
         for group in groups:
-            prefix = f"group_{group.pk}_"
             try:
-                content = parse_score(request.POST.get(prefix + 'content'))
-                pres    = parse_score(request.POST.get(prefix + 'presentation_skills'))
-                time_m  = parse_score(request.POST.get(prefix + 'time_management'))
-                lang    = parse_score(request.POST.get(prefix + 'language'))
-                qa      = parse_score(request.POST.get(prefix + 'questions_answers', ''))
-
-                # require at least the 4 main scores
-                if any(v is None for v in [content, pres, time_m, lang]):
-                    errors.append(f"{group.name}: missing required scores")
-                    continue
-
                 if Score.objects.filter(group=group, evaluator=evaluator).exists():
                     skipped += 1
                     continue
-
+                scores = parsed_scores[group.pk]
                 Score.objects.create(
-                    group=group, evaluator=evaluator,
-                    content=content, presentation_skills=pres,
-                    time_management=time_m, language=lang,
-                    questions_answers=qa,
+                    group=group, evaluator=evaluator, **scores,
                 )
                 saved += 1
             except Exception as e:

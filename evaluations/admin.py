@@ -4,7 +4,7 @@ from django.utils.html import format_html
 from .models import Group, Presenter, Evaluator, Score, WeightConfig
 
 
-SCORE_WIDGET = forms.NumberInput(attrs={'min': 0, 'max': 4, 'step': 0.5})
+SCORE_WIDGET = forms.NumberInput(attrs={'min': 0, 'max': 4, 'step': 0.1})
 
 
 class ScoreAdminForm(forms.ModelForm):

@@ -2,7 +2,7 @@
 <div style="border-top:4px solid {{ accent }}; background:{{ bg_light }}; border-radius:10px; padding:1.5rem; margin-bottom:2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
   <div>
     <div style="font-size:1.5rem; font-weight:800; color:{{ accent }};">{{ role_label }} Evaluation Form</div>
-    <div style="font-size:.9rem; color:var(--gray-600); margin-top:.2rem;">Score each group on 5 criteria taking values from 0 to 4. Decimal values like 2.5 are allowed.</div>
+    <div style="font-size:.9rem; color:var(--gray-600); margin-top:.2rem;">Score each group on 5 criteria (0 to 4). All groups are required. Decimal values (2.3, 3.7, etc.) are accepted.</div>
   </div>
   <a href="/evaluate/" class="btn btn-secondary">Change Role</a>
 </div>
@@ -48,7 +48,7 @@
       <input type="number"
              name="group_{{ group.pk }}_{{ field_name }}"
              id="inp_{{ group.pk }}_{{ field_name }}"
-             min="0" max="4" step="0.5"
+             min="0" max="4" step="0.1" required
              placeholder="0 - 4"
              oninput="updateTotal({{ group.pk }})"
              style="width:90px; padding:.55rem .75rem; border:2px solid var(--gray-200); border-radius:8px; font-size:1rem; font-weight:600; outline:none; text-align:center;"
@@ -68,7 +68,17 @@
 </div>
 
 <script>
-const HINTS = {0:'Not demonstrated', 0.5:'Very poor', 1:'Poor', 1.5:'Below average', 2:'Satisfactory', 2.5:'Above average', 3:'Good', 3.5:'Very good', 4:'Excellent'};
+function getHint(v) {
+  if (v === 0) return 'Not demonstrated';
+  if (v < 1) return 'Very poor';
+  if (v < 1.5) return 'Poor';
+  if (v < 2) return 'Below average';
+  if (v < 2.5) return 'Satisfactory';
+  if (v < 3) return 'Above average';
+  if (v < 3.5) return 'Good';
+  if (v < 4) return 'Very good';
+  return 'Excellent';
+}
 const FIELDS = ['content','presentation_skills','time_management','language','questions_answers'];
 
 function normalizeVal(raw) {
@@ -86,7 +96,7 @@ function updateTotal(pk) {
     const v = normalizeVal(inp.value);
     total += v;
     const hint = document.getElementById(`hint_${pk}_${f}`);
-    if (hint) hint.textContent = inp.value !== '' ? (HINTS[v] || '') : '';
+    if (hint) hint.textContent = inp.value !== '' ? getHint(v) : '';
   });
   const el = document.getElementById(`total_${pk}`);
   if (el) {
