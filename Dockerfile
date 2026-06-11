@@ -8,4 +8,4 @@ COPY . .
 RUN python manage.py collectstatic --noinput
 
 EXPOSE 3000
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn evaluation_system.wsgi:application --bind 0.0.0.0:3000"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python seed_data.py && gunicorn evaluation_system.wsgi:application --bind 0.0.0.0:3000"]
