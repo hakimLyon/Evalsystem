@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from evaluations.models import Group, WeightConfig
 
 if not User.objects.filter(is_superuser=True).exists():
-    User.objects.create_superuser('admin', 'admin@evalsystem.local', 'admin2024')
+    User.objects.create_superuser('admin', 'admin@evalsystem.local', 'admin123')
 
 if not WeightConfig.objects.exists():
     WeightConfig.objects.create(
